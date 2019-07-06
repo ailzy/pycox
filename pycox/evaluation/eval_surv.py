@@ -146,7 +146,7 @@ class EvalSurv:
             or 'add_km_censor' for Kaplan-Meier""")
         bs = ipcw.brier_score(time_grid, self.durations, self.events, self.surv.values,
                               self.censor_surv.surv.values, self.index_surv,
-                              self.censor_surv.index_surv, max_weight)
+                              self.censor_surv.index_surv, max_weight, True, self.round_)
         return pd.Series(bs, index=time_grid).rename('brier_score')
 
     def mbll(self, time_grid, max_weight=np.inf):
@@ -164,7 +164,7 @@ class EvalSurv:
             or 'add_km_censor' for Kaplan-Meier""")
         bs = ipcw.binomial_log_likelihood(time_grid, self.durations, self.events, self.surv.values,
                                           self.censor_surv.surv.values, self.index_surv,
-                                          self.censor_surv.index_surv, max_weight)
+                                          self.censor_surv.index_surv, max_weight, True, self.round_)
         return pd.Series(bs, index=time_grid).rename('mbll')
 
     def integrated_brier_score(self, time_grid, max_weight=np.inf):
@@ -182,7 +182,7 @@ class EvalSurv:
             raise ValueError("Need to add censor_surv to compute briser score. Use 'add_censor_est'")
         return ipcw.integrated_brier_score(time_grid, self.durations, self.events, self.surv.values,
                                            self.censor_surv.surv.values, self.index_surv,
-                                           self.censor_surv.index_surv, max_weight)
+                                           self.censor_surv.index_surv, max_weight, self.round_)
 
     def integrated_mbll(self, time_grid, max_weight=np.inf):
         """Integrated mean binomial log-likelihood weighted by the inverce censoring distribution.
@@ -199,4 +199,4 @@ class EvalSurv:
             raise ValueError("Need to add censor_surv to compute briser score. Use 'add_censor_est'")
         return ipcw.integrated_binomial_log_likelihood(time_grid, self.durations, self.events, self.surv.values,
                                                        self.censor_surv.surv.values, self.index_surv,
-                                                       self.censor_surv.index_surv, max_weight)
+                                                       self.censor_surv.index_surv, max_weight, self.round_)
