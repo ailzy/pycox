@@ -30,15 +30,28 @@ class EvalSurv:
         self.events = events
         self.censor_surv = censor_surv
         self.round_ = round_
-        if type(self.censor_surv) is str:
-            if self.censor_surv == 'km':
+        assert pd.Series(self.index_surv).is_monotonic
+
+    @property
+    def censor_surv(self):
+        """Estimated survival for censorings. 
+        Also an EvalSurv object.
+        """
+        return self._censor_surv
+
+    @censor_surv.setter
+    def censor_surv(self, censor_surv):
+        if isinstance(censor_surv, EvalSurv):
+            self._censor_surv = censor_surv
+        elif type(censor_surv) is str:
+            if censor_surv == 'km':
                 self.add_km_censor()
             else:
-                raise ValueError(f"censor_surv cannot be {self.censor_surv}.")
-        elif self.censor_surv is not None:
+                raise ValueError(f"censor_surv cannot be {self.censor_surv}. Use e.g. 'km'")
+        elif censor_surv is not None:
             self.add_censor_est(self.censor_surv)
-        # self.index_surv = self.surv.index.values
-        assert pd.Series(self.index_surv).is_monotonic
+        else:
+            self._censor_surv = None
 
     @property
     def index_surv(self):
@@ -55,41 +68,60 @@ class EvalSurv:
             raise ValueError(f"`round_` needs to be {vals}, got {round_}")
         self._round = round_
 
-    def add_censor_est(self, censor_surv):
+    def add_censor_est(self, censor_surv, round_='left'):
         """Add censoring estimates so one can use invece censoring weighting.
         `censor_surv` are the suvival estimes trainied on (durations, 1-events),
         
         Arguments:
             censor_surv {pd.DataFrame} -- Censor survival curves.
+
+    Keyword Arguments:
+        round {str} -- For durations between values of `surv.index` choose the higher index 'right'
+            or lower index 'left'. If `None` use `self.round_` (default: {None})
         """
-        if type(censor_surv) is not EvalSurv:
-            censor_surv = EvalSurv(censor_surv, self.durations, 1-self.events)
+        if not isinstance(censor_surv, EvalSurv):
+            censor_surv = self._constructor(censor_surv, self.durations, 1-self.events, None, round_)
         self.censor_surv = censor_surv
         return self
 
-    def add_km_censor(self):
+    def add_km_censor(self, round_='left'):
         """Add censoring estimates obtaind by Kaplan-Meier on the test set
         (durations, 1-events).
+
+        Here `round_` doesn't matter as the Kaplan-Meier curve use the exact durations,
+        and so there is no rounding.
         """
-        # from lifelines import KaplanMeierFitter
-        # km = KaplanMeierFitter().fit(self.durations, 1-self.events).survival_function_['KM_estimate']
-        # surv = pd.DataFrame(np.repeat(km.values.reshape(-1, 1), len(self.durations), axis=1),
-        #                     index=km.index)
         km = utils.kaplan_meier(self.durations, 1-self.events)
         surv = pd.DataFrame(np.repeat(km.values.reshape(-1, 1), len(self.durations), axis=1),
                             index=km.index)
-        return self.add_censor_est(surv)
+        return self.add_censor_est(surv, round_)
 
     @property
     def _constructor(self):
         return EvalSurv
 
     def __getitem__(self, index):
+        if not (hasattr(index, '__iter__') or type(index) is slice) :
+            index = [index]
         surv = self.surv.iloc[:, index]
         durations = self.durations[index]
         events = self.events[index]
-        censor_surv = self.censor_surv.surv.iloc[:, index] if self.censor_surv is not None else None
-        return self._constructor(surv, durations, events, censor_surv)
+        # censor_surv = self.censor_surv.surv.iloc[:, index] if self.censor_surv is not None else None
+        new = self._constructor(surv, durations, events, None, self.round_)
+        if self.censor_surv is not None:
+            new.censor_surv = self.censor_surv[index]
+        return new
+
+    def plot_surv(self, **kwargs):
+        """Plot survival estimates. 
+        kwargs are passed to `self.surv.plot`.
+        """
+        if len(self.durations) > 50:
+            raise RuntimeError("We don't allow to plot more than 50 lines. Use e.g. `ev[1:5].plot()`")
+        if 'drawstyle' in kwargs:
+            raise RuntimeError(f"`drawstyle` is set by `self.round_`. Remove from **kwargs")
+        drawstyle = 'steps-post' if self.round_ == 'left' else 'steps-pre'
+        return self.surv.plot(drawstyle=drawstyle, **kwargs)
 
     def idx_at_times(self, times):
         """Get the index (iloc) of the `surv.index` closest to `times`.
