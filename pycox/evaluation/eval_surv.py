@@ -20,13 +20,16 @@ class EvalSurv:
             this will be used. 
             If 'km', we will fit a Kaplan-Meier to the dataset.
             (default: {None})
+        round {str} -- For durations between values of `surv.index` choose the higher index 'right'
+            or lower index 'left' (default: {'right'})
     """
-    def __init__(self, surv, durations, events, censor_surv=None):
+    def __init__(self, surv, durations, events, censor_surv=None, round_='right'):
         assert (type(durations) == type(events) == np.ndarray)
         self.surv = surv
         self.durations = durations
         self.events = events
         self.censor_surv = censor_surv
+        self.round_ = round_
         if type(self.censor_surv) is str:
             if self.censor_surv == 'km':
                 self.add_km_censor()
@@ -34,8 +37,23 @@ class EvalSurv:
                 raise ValueError(f"censor_surv cannot be {self.censor_surv}.")
         elif self.censor_surv is not None:
             self.add_censor_est(self.censor_surv)
-        self.index_surv = self.surv.index.values
+        # self.index_surv = self.surv.index.values
         assert pd.Series(self.index_surv).is_monotonic
+
+    @property
+    def index_surv(self):
+        return self.surv.index.values
+
+    @property
+    def round_(self):
+        return self._round
+
+    @round_.setter
+    def round_(self, round_):
+        vals = ['left', 'right']
+        if round_ not in vals:
+            raise ValueError(f"`round_` needs to be {vals}, got {round_}")
+        self._round = round_
 
     def add_censor_est(self, censor_surv):
         """Add censoring estimates so one can use invece censoring weighting.
@@ -79,7 +97,7 @@ class EvalSurv:
 
         Useful for finding predictions at given durations.
         """
-        return utils.idx_at_times(self.index_surv, times)
+        return utils.idx_at_times(self.index_surv, times, self.round_)
 
     def _duration_idx(self):
         return self.idx_at_times(self.durations)
