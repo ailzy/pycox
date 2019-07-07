@@ -2,7 +2,7 @@ import pandas as pd
 import numpy as np
 import numba
 
-def idx_at_times(index_surv, times, round='right', assert_sorted=True):
+def idx_at_times(index_surv, times, steps='pre', assert_sorted=True):
     """Gives index of `index_surv` corresponding to `time`, i.e. 
     `index_surv[idx_at_times(index_surv, times)]` give the values of `index_surv`
     closet to `times`.
@@ -12,8 +12,8 @@ def idx_at_times(index_surv, times, round='right', assert_sorted=True):
         times {np.array} -- Values one want to match to `index_surv`
     
     Keyword Arguments:
-        round {str} -- Round 'right' (closest value higher) or 'left'
-          (closest value lower) (default: {'right'})
+        steps {str} -- Round 'pre' (closest value higher) or 'post'
+          (closest value lower) (default: {'pre'})
         assert_sorted {bool} -- Assert that index_surv is monotone (default: {True})
     
     Returns:
@@ -21,9 +21,9 @@ def idx_at_times(index_surv, times, round='right', assert_sorted=True):
     """
     if assert_sorted:
         assert pd.Series(index_surv).is_monotonic_increasing, "Need 'index_surv' to be monotonic increasing"
-    if round == 'right':
+    if steps == 'pre':
         idx = np.searchsorted(index_surv, times)
-    elif round == 'left':
+    elif steps == 'post':
         idx = np.searchsorted(index_surv, times, side='right') - 1
     return idx.clip(0, len(index_surv)-1)
 
