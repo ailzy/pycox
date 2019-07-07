@@ -96,9 +96,6 @@ class EvalSurv:
     def add_km_censor(self, steps='post'):
         """Add censoring estimates obtaind by Kaplan-Meier on the test set
         (durations, 1-events).
-
-        Here `steps` doesn't matter as the Kaplan-Meier curve use the exact durations,
-        and so there is no rounding.
         """
         km = utils.kaplan_meier(self.durations, 1-self.events)
         surv = pd.DataFrame(np.repeat(km.values.reshape(-1, 1), len(self.durations), axis=1),
@@ -115,7 +112,6 @@ class EvalSurv:
         surv = self.surv.iloc[:, index]
         durations = self.durations[index]
         events = self.events[index]
-        # censor_surv = self.censor_surv.surv.iloc[:, index] if self.censor_surv is not None else None
         new = self._constructor(surv, durations, events, None, self.steps)
         if self.censor_surv is not None:
             new.censor_surv = self.censor_surv[index]
@@ -186,7 +182,8 @@ class EvalSurv:
             or 'add_km_censor' for Kaplan-Meier""")
         bs = ipcw.brier_score(time_grid, self.durations, self.events, self.surv.values,
                               self.censor_surv.surv.values, self.index_surv,
-                              self.censor_surv.index_surv, max_weight, True, self.steps)
+                              self.censor_surv.index_surv, max_weight, True, self.steps,
+                              self.censor_surv.steps)
         return pd.Series(bs, index=time_grid).rename('brier_score')
 
     def mbll(self, time_grid, max_weight=np.inf):
@@ -204,7 +201,8 @@ class EvalSurv:
             or 'add_km_censor' for Kaplan-Meier""")
         bs = ipcw.binomial_log_likelihood(time_grid, self.durations, self.events, self.surv.values,
                                           self.censor_surv.surv.values, self.index_surv,
-                                          self.censor_surv.index_surv, max_weight, True, self.steps)
+                                          self.censor_surv.index_surv, max_weight, True, self.steps,
+                                          self.censor_surv.steps)
         return pd.Series(bs, index=time_grid).rename('mbll')
 
     def integrated_brier_score(self, time_grid, max_weight=np.inf):
@@ -222,7 +220,8 @@ class EvalSurv:
             raise ValueError("Need to add censor_surv to compute briser score. Use 'add_censor_est'")
         return ipcw.integrated_brier_score(time_grid, self.durations, self.events, self.surv.values,
                                            self.censor_surv.surv.values, self.index_surv,
-                                           self.censor_surv.index_surv, max_weight, self.steps)
+                                           self.censor_surv.index_surv, max_weight, self.steps,
+                                           self.censor_surv.steps)
 
     def integrated_mbll(self, time_grid, max_weight=np.inf):
         """Integrated mean binomial log-likelihood weighted by the inverce censoring distribution.
@@ -239,4 +238,5 @@ class EvalSurv:
             raise ValueError("Need to add censor_surv to compute briser score. Use 'add_censor_est'")
         return ipcw.integrated_binomial_log_likelihood(time_grid, self.durations, self.events, self.surv.values,
                                                        self.censor_surv.surv.values, self.index_surv,
-                                                       self.censor_surv.index_surv, max_weight, self.steps)
+                                                       self.censor_surv.index_surv, max_weight, self.steps,
+                                                       self.censor_surv.steps)
