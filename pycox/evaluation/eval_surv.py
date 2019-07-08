@@ -47,9 +47,9 @@ class EvalSurv:
             if censor_surv == 'km':
                 self.add_km_censor()
             else:
-                raise ValueError(f"censor_surv cannot be {self.censor_surv}. Use e.g. 'km'")
+                raise ValueError(f"censor_surv cannot be {censor_surv}. Use e.g. 'km'")
         elif censor_surv is not None:
-            self.add_censor_est(self.censor_surv)
+            self.add_censor_est(censor_surv)
         else:
             self._censor_surv = None
 
@@ -89,7 +89,8 @@ class EvalSurv:
             or lower index 'post'. If `None` use `self.steps` (default: {None})
         """
         if not isinstance(censor_surv, EvalSurv):
-            censor_surv = self._constructor(censor_surv, self.durations, 1-self.events, None, steps)
+            censor_surv = self._constructor(censor_surv, self.durations, 1-self.events, None,
+                                            steps=steps)
         self.censor_surv = censor_surv
         return self
 
@@ -112,7 +113,7 @@ class EvalSurv:
         surv = self.surv.iloc[:, index]
         durations = self.durations[index]
         events = self.events[index]
-        new = self._constructor(surv, durations, events, None, self.steps)
+        new = self._constructor(surv, durations, events, None, steps=self.steps)
         if self.censor_surv is not None:
             new.censor_surv = self.censor_surv[index]
         return new
